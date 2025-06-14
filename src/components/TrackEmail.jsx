@@ -1,80 +1,76 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { useSelector } from 'react-redux';
+import TrackingStatus from './TrackingStatus';
 
 function TrackEmail() {
-  const [to, setTo] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
+  const [to, setTo] = useState('ashar050488@gmail.com');
   const [trackingId, setTrackingId] = useState('');
   const [error, setError] = useState('');
-  const user = useSelector((state) => state.user.user);
+  const { user, token } = useSelector((state) => state.auth);
 
   const handleTrack = async () => {
-    if (!to || !subject) {
-      setError('Recipient and subject are required');
+    if (!to) {
+      setError('Recipient email is required');
       return;
     }
 
     try {
-      const response = await fetch('http://localhost:5000/track', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({ to, subject, body }),
-      });
+      const response = await axios.post(
+        'http://localhost:5000/track',
+        { to },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          withCredentials: true,
+        }
+      );
 
-      const data = await response.json();
-      if (response.ok) {
-        setTrackingId(data.trackingId);
-        setError('');
+      setTrackingId(response.data.trackingId);
+      setError('');
+    } catch (error) {
+      if (error.response?.status === 403) {
+        setError(
+          <span>
+            Permission error: Please reconnect your Gmail with updated permissions. 
+            <a href="#gmail-connect" className="underline ml-1">Go to settings</a>
+          </span>
+        );
+      } else if (error.response) {
+        setError(error.response.data?.error || 'Failed to start tracking');
       } else {
-        setError(data.error || 'Failed to start tracking');
+        setError('Network error');
       }
-    } catch (err) {
-      setError('Network error');
+      setTrackingId('');
     }
   };
 
   return (
-    <div className="bg-white p-6 shadow rounded mt-4">
+    <div className="bg-white p-6 shadow rounded mt-4 max-w-md mx-auto">
       <h3 className="text-xl font-semibold mb-4">Track an Email</h3>
 
       <input
         type="email"
         placeholder="Recipient Email"
-        className="border p-2 mb-2 w-full"
+        className="border p-2 mb-3 w-full"
         value={to}
         onChange={(e) => setTo(e.target.value)}
       />
-      <input
-        type="text"
-        placeholder="Subject"
-        className="border p-2 mb-2 w-full"
-        value={subject}
-        onChange={(e) => setSubject(e.target.value)}
-      />
-      <textarea
-        placeholder="Body (Optional)"
-        className="border p-2 mb-2 w-full"
-        rows="4"
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-      />
 
-      {error && <p className="text-red-500 mb-2">{error}</p>}
+      {error && <div className="text-red-500 mb-3">{error}</div>}
 
       <button
         onClick={handleTrack}
-        className="bg-green-600 text-white px-4 py-2 rounded"
+        className="bg-green-600 text-white px-4 py-2 rounded w-full"
       >
-        Track Email
+        Start Tracking
       </button>
 
       {trackingId && (
-        <div className="mt-3 text-green-600">
-          Tracking started! ID: {trackingId}
+        <div className="mt-4">
+          <TrackingStatus trackingId={trackingId} />
         </div>
       )}
     </div>

@@ -9,25 +9,31 @@ import Login from './auth/Login';
 import Signup from './auth/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
-import Callback from './components/Callback'; // 👈 add this import
+import Callback from './components/Callback';
 
 function App() {
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await axios.get(`${Base_URL}/me`, {
-          withCredentials: true,
-        });
-        dispatch(loginSuccess({ user: res.data }));
-      } catch (err) {
-        console.log('Auth check failed:', err.message);
-      }
-    };
+// App.js
+useEffect(() => {
+  const fetchUser = async () => {
+    try {
+      const res = await axios.get(`${Base_URL}/me`, {
+        withCredentials: true,
+      });
 
-    fetchUser();
-  }, [dispatch]);
+      // FIX: Pass token if available
+      dispatch(loginSuccess({ 
+        user: res.data, 
+        token: res.data.token || null 
+      }));
+    } catch (err) {
+      console.log('Auth check failed:', err.message);
+    }
+  };
+
+  fetchUser();
+}, [dispatch]);
 
   return (
     <Routes>
@@ -55,7 +61,6 @@ function App() {
           </PublicRoute>
         }
       />
-      {/* 👇 Gmail OAuth Callback Route */}
       <Route path="/callback" element={<Callback />} />
     </Routes>
   );
