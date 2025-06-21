@@ -46,7 +46,7 @@ function TrackingStatus({ trackingId }) {
     sent: 'text-blue-600',
     delivered: 'text-indigo-600',
     opened: 'text-green-600',
-    replied: 'text-green-600',
+    responded: 'text-green-600',
     ghosted: 'text-red-600',
     bounced: 'text-red-600',
   };
