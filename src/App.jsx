@@ -67,3 +67,21 @@ useEffect(() => {
 }
 
 export default App;
+// import React from 'react'
+// import LoginPage from './pages/LoginPage'
+// import SignupPage from './pages/Signup'
+// import ProfilePage from './pages/ProfilePage'
+// import Profile from './pages/Profile'
+
+// const App = () => {
+//   return (
+//     <div>
+//       {/* <LoginPage/> */}
+//       <SignupPage/>
+//       {/* <ProfilePage/> */}
+//       {/* <Profile/> */}
+//     </div>
+//   )
+// }
+
+// export default App
