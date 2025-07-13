@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { loginSuccess } from './redux/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { loginSuccess, setAuthLoading } from './redux/authSlice';
 import axios from 'axios';
 import { Base_URL } from './Api/Base';
 import { Routes, Route } from 'react-router-dom';
@@ -10,30 +10,36 @@ import Signup from './auth/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import Callback from './components/Callback';
+import AllTrackedEmails from './components/AllTrackedEmails.jsx';
 
 function App() {
   const dispatch = useDispatch();
+  const loading = useSelector((state) => state.auth.loading);
 
-// App.js
-useEffect(() => {
-  const fetchUser = async () => {
-    try {
-      const res = await axios.get(`${Base_URL}/me`, {
-        withCredentials: true,
-      });
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        dispatch(setAuthLoading(true));
+        const res = await axios.get(`${Base_URL}/me`, {
+          withCredentials: true,
+        });
 
-      // FIX: Pass token if available
-      dispatch(loginSuccess({ 
-        user: res.data, 
-        token: res.data.token || null 
-      }));
-    } catch (err) {
-      console.log('Auth check failed:', err.message);
-    }
-  };
+        dispatch(loginSuccess({
+          user: res.data,
+          token: res.data.token || null,
+        }));
+      } catch (err) {
+        console.log('Auth check failed:', err.message);
+        dispatch(setAuthLoading(false));
+      }
+    };
 
-  fetchUser();
-}, [dispatch]);
+    fetchUser();
+  }, [dispatch]);
+
+  if (loading) {
+    return <div className="text-center mt-12 text-lg font-semibold">Loading app...</div>;
+  }
 
   return (
     <Routes>
@@ -54,6 +60,14 @@ useEffect(() => {
         }
       />
       <Route
+        path="/trackings"
+        element={
+          <ProtectedRoute>
+            <AllTrackedEmails />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/signup"
         element={
           <PublicRoute>
@@ -67,21 +81,3 @@ useEffect(() => {
 }
 
 export default App;
-// import React from 'react'
-// import LoginPage from './pages/LoginPage'
-// import SignupPage from './pages/Signup'
-// import ProfilePage from './pages/ProfilePage'
-// import Profile from './pages/Profile'
-
-// const App = () => {
-//   return (
-//     <div>
-//       {/* <LoginPage/> */}
-//       <SignupPage/>
-//       {/* <ProfilePage/> */}
-//       {/* <Profile/> */}
-//     </div>
-//   )
-// }
-
-// export default App
