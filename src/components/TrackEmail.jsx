@@ -8,12 +8,14 @@ function TrackEmail() {
   const [trackingId, setTrackingId] = useState('');
   const [error, setError] = useState('');
   const { user, token } = useSelector((state) => state.auth);
+  const [loading,setLoading] = useState(false);
 
   const handleTrack = async () => {
     if (!to) {
       setError('Recipient email is required');
       return;
     }
+    setLoading(true)
 
     try {
       const response = await axios.post(
@@ -44,6 +46,9 @@ function TrackEmail() {
         setError('Network error');
       }
       setTrackingId('');
+      
+    }finally{
+      setLoading(false)
     }
   };
 
@@ -64,10 +69,9 @@ function TrackEmail() {
       <button
         onClick={handleTrack}
         className="bg-green-600 text-white px-4 py-2 rounded w-full"
-      >
-        Start Tracking
+        >
+        {loading?'Tracking .... ':'Start Tracking'}
       </button>
-
       {trackingId && (
         <div className="mt-4">
           <TrackingStatus trackingId={trackingId} />

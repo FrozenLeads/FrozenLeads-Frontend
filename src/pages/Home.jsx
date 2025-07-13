@@ -3,6 +3,7 @@ import GmailConnect from '../components/GmailConnect';
 import TrackEmail from '../components/TrackEmail';
 import TrackingStatus from '../components/TrackingStatus';
 import { Outlet } from 'react-router-dom';
+import Logout from '../auth/Logout';
 
 const Home = () => {
   const [trackingId, setTrackingId] = useState('');
@@ -13,6 +14,7 @@ const Home = () => {
       <GmailConnect />
       <TrackEmail setTrackingId={setTrackingId} />
       <TrackingStatus trackingId={trackingId} />
+      <Logout/>
       <Outlet />
     </div>
   );
