@@ -1,83 +1,45 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { loginSuccess, setAuthLoading } from './redux/authSlice';
-import axios from 'axios';
-import { Base_URL } from './Api/Base';
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
-import Login from './auth/Login';
-import Signup from './auth/Signup';
-import ProtectedRoute from './components/ProtectedRoute';
-import PublicRoute from './components/PublicRoute';
-import Callback from './components/Callback';
-import AllTrackedEmails from './components/AllTrackedEmails.jsx';
+import { AuthProvider } from './context/AuthContext.jsx';
+
+import HomePage from './pages/HomePage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import SignupPage from './pages/SignupPage.jsx';
+import CallbackPage from './pages/CallbackPage.jsx';
+import TrackingsPage from './pages/TrackingsPage.jsx';
+import LeadsPage from './pages/LeadsPage.jsx';
+import GroupsPage from './pages/GroupsPage.jsx';
+import GroupDetailsPage from './pages/GroupDetailsPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
+import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
+import PublicRoute from './components/auth/PublicRoute.jsx';
+import Navbar from './components/common/Navbar.jsx';
+import DraftsPage from './pages/DraftsPage.jsx';
 
 function App() {
-  const dispatch = useDispatch();
-  const loading = useSelector((state) => state.auth.loading);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        dispatch(setAuthLoading(true));
-        const res = await axios.get(`${Base_URL}/me`, {
-          withCredentials: true,
-        });
-
-        dispatch(loginSuccess({
-          user: res.data,
-          token: res.data.token || null,
-        }));
-      } catch (err) {
-        console.log('Auth check failed:', err.message);
-        dispatch(setAuthLoading(false));
-      }
-    };
-
-    fetchUser();
-  }, [dispatch]);
-
-  if (loading) {
-    return <div className="text-center mt-12 text-lg font-semibold">Loading app...</div>;
-  }
-
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/trackings"
-        element={
-          <ProtectedRoute>
-            <AllTrackedEmails />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/signup"
-        element={
-          <PublicRoute>
-            <Signup />
-          </PublicRoute>
-        }
-      />
-      <Route path="/callback" element={<Callback />} />
-    </Routes>
+    <AuthProvider>
+      <Navbar />
+      <main className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+          <Routes>
+            {/* Protected Routes */}
+            <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+            <Route path="/trackings" element={<ProtectedRoute><TrackingsPage /></ProtectedRoute>} />
+            <Route path="/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
+            <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
+            <Route path="/groups/:groupId" element={<ProtectedRoute><GroupDetailsPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/drafts" element={<ProtectedRoute><DraftsPage /></ProtectedRoute>} />
+
+            {/* Public Routes */}
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+            <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+            <Route path="/callback" element={<CallbackPage />} />
+          </Routes>
+      </main>
+    </AuthProvider>
   );
 }
 
 export default App;
+
