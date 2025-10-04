@@ -20,7 +20,7 @@ function App() {
   return (
     <AuthProvider>
       <Navbar />
-      <main className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+      <main className="">
           <Routes>
             {/* Protected Routes */}
             <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
