@@ -1,8 +1,99 @@
 import React from 'react';
 import api from '../../api/api';
 import { useAuth } from '../../context/AuthContext';
+import styled from 'styled-components';
+
+// --- Styled Components for GmailConnect ---
+
+const Wrapper = styled.div`
+  font-family: 'Poppins', sans-serif;
+  color: #2C2C2C;
+`;
+
+const Description = styled.p`
+  font-size: 0.95rem;
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 20px;
+`;
+
+const PrimaryButton = styled.button`
+  width: 100%;
+  padding: 12px;
+  background-color: #2C2C2C;
+  color: #F4F1EC;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+// --- Components for the "Connected" state ---
+
+const ConnectedStateWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 15px;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+`;
+
+const StatusIndicator = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: rgba(34, 139, 34, 0.08); /* Soft green */
+  border: 1px solid rgba(34, 139, 34, 0.15);
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #228B22; /* Forest Green */
+
+  &::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #228B22;
+  }
+`;
+
+const DisconnectButton = styled.button`
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #D8000C; /* Red for destructive action on hover */
+  }
+`;
+
+
+// --- GmailConnect Component ---
 
 const GmailConnect = () => {
+    // --- All original logic is preserved ---
     const { user, updateUser } = useAuth();
     const isGmailConnected = user?.googleTokens;
 
@@ -32,15 +123,30 @@ const GmailConnect = () => {
         } catch (err) { console.error('Disconnect error:', err); }
     };
 
+    // --- Redesigned JSX ---
     if (isGmailConnected) {
         return (
-             <div className="flex items-center gap-2">
-                <span className="bg-green-100 text-green-800 text-sm font-medium mr-2 px-2.5 py-0.5 rounded-full">Gmail Connected</span>
-                <button onClick={handleDisconnect} className="bg-red-100 text-red-800 text-sm px-3 py-1 rounded-md hover:bg-red-200">Disconnect</button>
-            </div>
+            <ConnectedStateWrapper>
+                <StatusIndicator>
+                    Gmail Connected
+                </StatusIndicator>
+                <DisconnectButton onClick={handleDisconnect}>
+                    Disconnect
+                </DisconnectButton>
+            </ConnectedStateWrapper>
         );
     }
-    return <button onClick={handleConnect} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Connect Gmail</button>;
+
+    return (
+        <Wrapper>
+            <Description>
+                Connect your account to automatically track email opens, replies, and manage leads seamlessly.
+            </Description>
+            <PrimaryButton onClick={handleConnect}>
+                Connect Gmail
+            </PrimaryButton>
+        </Wrapper>
+    );
 };
 
 export default GmailConnect;

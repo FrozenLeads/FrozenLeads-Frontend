@@ -1,27 +1,105 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api/api';
-import Modal from '../components/common/Modal'; // Assuming you have a reusable Modal
+import Modal from '../components/common/Modal';
+import styled, { createGlobalStyle, keyframes } from 'styled-components';
+
+// --- Global Styles & Fonts ---
+const GlobalStyle = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500;600&display=swap');
+  body { font-family: 'Poppins', sans-serif; background-color: #F4F1EC; color: #2C2C2C; }
+`;
+
+// --- Keyframe Animations ---
+const fadeIn = keyframes` from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } `;
+const spin = keyframes` to { transform: rotate(360deg); } `;
+
+// --- Page Layout Components ---
+const PageWrapper = styled.div` max-width: 1200px; margin: 0 auto; padding: 40px 20px; animation: ${fadeIn} 0.5s ease-out; `;
+const StateWrapper = styled.div` display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; color: #555; min-height: 80vh; `;
+const Spinner = styled.div` width: 40px; height: 40px; border: 4px solid rgba(44, 44, 44, 0.1); border-left-color: #2C2C2C; border-radius: 50%; animation: ${spin} 1s linear infinite; margin-bottom: 15px; `;
+const BackLink = styled(Link)`
+  display: inline-flex; align-items: center; gap: 8px;
+  color: #555; text-decoration: none; font-weight: 500;
+  margin-bottom: 20px; transition: color 0.2s ease;
+  &:hover { color: #2C2C2C; }
+`;
+const Header = styled.div`
+  display: flex; flex-direction: column; gap: 10px;
+  margin-bottom: 40px;
+  @media (min-width: 768px) { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+`;
+const PageTitle = styled.h1` font-family: 'Playfair Display', serif; font-size: 2.8rem; font-weight: 700; line-height: 1.2; `;
+const PageSubtitle = styled.p` color: #555; font-size: 1rem; `;
+const DestructiveButton = styled.button`
+  padding: 10px 20px; background-color: transparent; color: #D8000C;
+  border: 1px solid #D8000C; border-radius: 8px; font-size: 0.9rem; font-weight: 500;
+  cursor: pointer; transition: all 0.2s ease;
+  &:hover { background-color: #D8000C; color: #FFF; }
+`;
+const GridContainer = styled.div` display: grid; grid-template-columns: 1fr; gap: 30px; @media (min-width: 1024px) { grid-template-columns: 1fr 1fr; } `;
+
+// --- Card & Form Components ---
+const ContentCard = styled.div` background-color: #FDFCF9; border: 1px solid #E0DBCF; border-radius: 16px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); overflow: hidden; `;
+const CardTitle = styled.h2` font-size: 1.5rem; font-weight: 600; padding: 24px; border-bottom: 1px solid #E0DBCF; `;
+const CardBody = styled.div` padding: 24px; `;
+const CardSection = styled.div` &:not(:last-child) { border-bottom: 1px solid #E0DBCF; padding-bottom: 20px; margin-bottom: 20px; } `;
+const SectionTitle = styled.h3` font-weight: 600; margin-bottom: 15px; color: #2C2C2C; `;
+const ItemList = styled.ul` list-style: none; display: flex; flex-direction: column; gap: 15px; `;
+const Item = styled.li` display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; `;
+const RemoveButton = styled.button` background: none; border: none; cursor: pointer; svg { width: 20px; height: 20px; stroke: #888; transition: stroke 0.2s ease; } &:hover svg { stroke: #D8000C; } `;
+const Form = styled.form` display: flex; flex-direction: column; gap: 15px; `;
+const Input = styled.input` width: 100%; border: none; border-bottom: 1px solid #C4C4C4; background: transparent; padding: 10px 5px; font-size: 1rem; font-family: 'Poppins', sans-serif; transition: border-color 0.3s ease; &:focus { outline: none; border-color: #2C2C2C; } `;
+const PrimaryButton = styled.button` padding: 12px; background-color: #2C2C2C; color: #F4F1EC; border: none; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: transform 0.2s ease; &:disabled { background-color: #888; cursor: not-allowed; } &:hover:not(:disabled) { transform: translateY(-2px); } `;
+const SearchWrapper = styled.div` position: relative; `;
+const SearchResultsList = styled.ul` position: absolute; top: 100%; left: 0; right: 0; background-color: #FFFFFF; border: 1px solid #E0DBCF; border-top: none; border-radius: 0 0 12px 12px; box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05); list-style: none; margin-top: -2px; max-height: 200px; overflow-y: auto; z-index: 10; `;
+const SearchResultItem = styled.li` padding: 12px 15px; cursor: pointer; font-size: 0.95rem; transition: background-color 0.2s ease; &:hover { background-color: #F4F1EC; } `;
+
+// --- Confirmation Modal Styled Components ---
+const ConfirmModalContent = styled.div` text-align: center; padding: 20px; `;
+const ConfirmMessage = styled.p` font-size: 1.1rem; color: #333; margin-bottom: 30px; `;
+const ButtonGroup = styled.div` display: flex; gap: 15px; justify-content: center; `;
+const CancelButton = styled(PrimaryButton)`
+  background-color: transparent;
+  color: #555;
+  border: 1px solid #C4C4C4;
+  &:hover { background-color: #eee; transform: translateY(0); }
+`;
+const ConfirmButton = styled(DestructiveButton)`
+  background-color: #D8000C;
+  color: #FFF;
+  &:hover { background-color: #b2000a; transform: translateY(-2px); }
+`;
+
+// --- SVG Icons ---
+const BackIcon = () => ( <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> );
+const RemoveIcon = () => ( <svg viewBox="0 0 24 24" fill="none" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg> );
 
 const GroupDetailsPage = () => {
     const { groupId } = useParams();
     const navigate = useNavigate();
     const [group, setGroup] = useState(null);
     const [sharedLeads, setSharedLeads] = useState([]);
-    const [availableLeads, setAvailableLeads] = useState([]); // Changed from myLeads for clarity
+    const [availableLeads, setAvailableLeads] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    
-    // State for forms
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const searchRef = useRef(null);
     const [collaboratorEmail, setCollaboratorEmail] = useState('');
     const [leadToShare, setLeadToShare] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearchVisible, setIsSearchVisible] = useState(false);
 
-    // State for the current user to check ownership
-    const [currentUser, setCurrentUser] = useState(null);
+    // Confirmation Modal State
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [confirmAction, setConfirmAction] = useState(null);
+    const [confirmMessage, setConfirmMessage] = useState('');
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
+        setError('');
         try {
             const [meRes, groupRes, sharedLeadsRes, allLeadsRes] = await Promise.all([
                 api.get('/me'),
@@ -34,11 +112,9 @@ const GroupDetailsPage = () => {
             setGroup(groupRes.data.data);
             setSharedLeads(sharedLeadsRes.data.data);
 
-            // --- THIS IS THE FIX FOR THE DROPDOWN ---
             const sharedLeadIds = new Set(sharedLeadsRes.data.data.map(sl => sl.lead._id));
             const available = allLeadsRes.data.data.filter(lead => !sharedLeadIds.has(lead._id));
             setAvailableLeads(available);
-            // --- END OF FIX ---
 
         } catch (error) {
             console.error("Failed to fetch group details", error);
@@ -46,9 +122,32 @@ const GroupDetailsPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [groupId]);
     
-    useEffect(() => { fetchData(); }, [groupId]);
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (searchQuery.length > 0) {
+            const filtered = availableLeads.filter(lead =>
+                lead.leadName.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            setSearchResults(filtered);
+        } else {
+            setSearchResults([]);
+        }
+    }, [searchQuery, availableLeads]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (searchRef.current && !searchRef.current.contains(event.target)) {
+                setIsSearchVisible(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [searchRef]);
 
     const handleAddCollaborator = async (e) => {
         e.preventDefault();
@@ -64,26 +163,43 @@ const GroupDetailsPage = () => {
         }
     };
 
-    const handleRemoveCollaborator = async (collaboratorId) => {
-        if (window.confirm("Are you sure you want to remove this collaborator?")) {
+    const handleUnshareLead = (sharedLeadId) => {
+        setConfirmMessage("Are you sure you want to unshare this lead?");
+        setConfirmAction(() => async () => {
+            try {
+                await api.delete(`/collab/${groupId}/leads/${sharedLeadId}`);
+                fetchData();
+            } catch (error) {
+                alert('Failed to unshare lead: ' + (error.response?.data?.message || error.message));
+            }
+        });
+        setIsConfirmModalOpen(true);
+    };
+
+    const handleRemoveCollaborator = (collaboratorId) => {
+        setConfirmMessage("Are you sure you want to remove this collaborator?");
+        setConfirmAction(() => async () => {
             try {
                 await api.post(`/collab/${groupId}/remove-collaborator`, { collaboratorId });
                 fetchData();
             } catch (error) {
                 alert('Failed to remove collaborator: ' + (error.response?.data?.message || error.message));
             }
-        }
+        });
+        setIsConfirmModalOpen(true);
     };
 
-    const handleDeleteGroup = async () => {
-        if (window.confirm("Are you sure you want to delete this group? This action cannot be undone.")) {
+    const handleDeleteGroup = () => {
+        setConfirmMessage("Are you sure you want to delete this group? This action is permanent.");
+        setConfirmAction(() => async () => {
             try {
                 await api.delete(`/collab/${groupId}`);
                 navigate('/groups');
             } catch (error) {
                 alert('Failed to delete group: ' + (error.response?.data?.message || error.message));
             }
-        }
+        });
+        setIsConfirmModalOpen(true);
     };
 
     const handleShareLead = async (e) => {
@@ -92,6 +208,7 @@ const GroupDetailsPage = () => {
         try {
             await api.post(`/collab/${groupId}/share-lead/${leadToShare}`);
             setLeadToShare('');
+            setSearchQuery('');
             fetchData();
         } catch (error) {
             alert('Failed to share lead: ' + (error.response?.data?.error || error.message));
@@ -100,75 +217,147 @@ const GroupDetailsPage = () => {
         }
     };
     
+    const handleSelectLead = (lead) => {
+        setLeadToShare(lead._id);
+        setSearchQuery(lead.leadName);
+        setIsSearchVisible(false);
+    };
+
+    const executeConfirmAction = () => {
+        if (confirmAction) {
+            confirmAction();
+        }
+        setIsConfirmModalOpen(false);
+    };
+    
     const isOwner = currentUser && group && currentUser._id === group.owner._id;
 
-    if (loading) return <div className="text-center p-8">Loading group details...</div>;
-    if (error) return <div className="text-center text-red-500 p-8">{error}</div>;
-    if (!group) return <div className="text-center p-8">Group not found.</div>;
+    if (loading) return <StateWrapper><Spinner />Loading group details...</StateWrapper>;
+    if (error) return <StateWrapper>{error}</StateWrapper>;
+    if (!group) return <StateWrapper>Group not found.</StateWrapper>;
     
     return (
-        <div className="max-w-4xl mx-auto p-4">
-            <button onClick={() => navigate('/groups')} className="text-blue-600 hover:underline mb-4">&larr; Back to Groups</button>
-            <div className="flex justify-between items-start mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800 mb-2">{group.groupName}</h1>
-                    <p className="text-gray-500">Owner: {group.owner.firstName}</p>
-                </div>
-                {isOwner && (
-                    <button onClick={handleDeleteGroup} className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors">
-                        Delete Group
-                    </button>
-                )}
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Shared Leads Section */}
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-semibold mb-4">Shared Leads</h2>
-                    {sharedLeads.length > 0 ? (
-                        <ul className="divide-y">{sharedLeads.map(sl => <li key={sl._id} className="py-2">{sl.lead.leadName} <span className="text-xs text-gray-400">(by {sl.sharedBy.firstName})</span></li>)}</ul>
-                    ) : <p className="text-sm text-gray-500">No leads have been shared in this group yet.</p>}
-                    
-                    <form onSubmit={handleShareLead} className="mt-4 border-t pt-4">
-                        <h3 className="font-semibold mb-2">Share a Lead</h3>
-                        <select value={leadToShare} onChange={e => setLeadToShare(e.target.value)} className="w-full p-2 border rounded mb-2">
-                            <option value="">Select a lead to share...</option>
-                            {availableLeads.map(lead => <option key={lead._id} value={lead._id}>{lead.leadName}</option>)}
-                        </select>
-                        <button type="submit" disabled={!leadToShare || isSubmitting} className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:bg-blue-300 transition-colors">
-                            {isSubmitting ? 'Sharing...' : 'Share Lead'}
-                        </button>
-                    </form>
-                </div>
-                
-                {/* Members and Management */}
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-semibold mb-4">Members ({group.collaborators.length + 1})</h2>
-                    <ul className="divide-y">
-                        <li className="py-2 font-semibold">{group.owner.firstName} (Owner)</li>
-                        {group.collaborators.map(c => (
-                            <li key={c._id} className="py-2 flex justify-between items-center">
-                                {c.firstName}
-                                {isOwner && (
-                                    <button onClick={() => handleRemoveCollaborator(c._id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                    
+        <>
+            <GlobalStyle />
+            <PageWrapper>
+                <BackLink to="/groups"><BackIcon /> Back to All Groups</BackLink>
+                <Header>
+                    <div>
+                        <PageTitle>{group.groupName}</PageTitle>
+                        <PageSubtitle>Owned by {group.owner.firstName}</PageSubtitle>
+                    </div>
                     {isOwner && (
-                        <form onSubmit={handleAddCollaborator} className="mt-4 border-t pt-4">
-                            <h3 className="font-semibold mb-2">Add Collaborator</h3>
-                            <input value={collaboratorEmail} onChange={e => setCollaboratorEmail(e.target.value)} placeholder="User's email address" className="w-full p-2 border rounded mb-2" />
-                            <button type="submit" disabled={isSubmitting} className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 disabled:bg-green-300 transition-colors">
-                                {isSubmitting ? 'Adding...' : 'Add Collaborator'}
-                            </button>
-                        </form>
+                        <DestructiveButton onClick={handleDeleteGroup}>Delete Group</DestructiveButton>
                     )}
-                </div>
-            </div>
-        </div>
+                </Header>
+                
+                <GridContainer>
+                    <ContentCard>
+                        <CardTitle>Shared Leads</CardTitle>
+                        <CardBody>
+                            <CardSection>
+                                {sharedLeads.length > 0 ? (
+                                    <ItemList>
+                                        {sharedLeads.map(sl => {
+                                            const canUnshare = isOwner || (currentUser && currentUser._id === sl.sharedBy._id);
+                                            return (
+                                                <Item key={sl._id}>
+                                                    <div>
+                                                        <span>{sl.lead.leadName}</span>
+                                                        <span style={{ fontSize: '0.8rem', color: '#888' }}> (by {sl.sharedBy.firstName})</span>
+                                                    </div>
+                                                    {canUnshare && (
+                                                        <RemoveButton onClick={() => handleUnshareLead(sl._id)} title="Unshare this lead">
+                                                            <RemoveIcon />
+                                                        </RemoveButton>
+                                                    )}
+                                                </Item>
+                                            );
+                                        })}
+                                    </ItemList>
+                                ) : <p style={{color: '#555', fontSize: '0.9rem'}}>No leads have been shared yet.</p>}
+                            </CardSection>
+                            
+                            <Form onSubmit={handleShareLead}>
+                                <SectionTitle>Share a Lead</SectionTitle>
+                                <SearchWrapper ref={searchRef}>
+                                    <Input
+                                        type="text"
+                                        placeholder="Search for a lead to share..."
+                                        value={searchQuery}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
+                                            setIsSearchVisible(true);
+                                            setLeadToShare('');
+                                        }}
+                                        autoComplete="off"
+                                    />
+                                    {isSearchVisible && searchQuery && (
+                                        <SearchResultsList>
+                                            {searchResults.length > 0 ? (
+                                                searchResults.map(lead => (
+                                                    <SearchResultItem key={lead._id} onClick={() => handleSelectLead(lead)}>
+                                                        {lead.leadName}
+                                                    </SearchResultItem>
+                                                ))
+                                            ) : (
+                                                <SearchResultItem as="div" style={{ cursor: 'default', color: '#888' }}>
+                                                    No leads found.
+                                                </SearchResultItem>
+                                            )}
+                                        </SearchResultsList>
+                                    )}
+                                </SearchWrapper>
+                                <PrimaryButton type="submit" disabled={!leadToShare || isSubmitting}>
+                                    {isSubmitting ? 'Sharing...' : 'Share Lead'}
+                                </PrimaryButton>
+                            </Form>
+                        </CardBody>
+                    </ContentCard>
+                    
+                    <ContentCard>
+                        <CardTitle>Members ({group.collaborators.length + 1})</CardTitle>
+                        <CardBody>
+                            <CardSection>
+                                <ItemList>
+                                    <Item><strong>{group.owner.firstName}</strong> <span style={{fontSize: '0.8rem', color: '#888'}}> (Owner)</span></Item>
+                                    {group.collaborators.map(c => (
+                                        <Item key={c._id}>
+                                            <span>{c.firstName}</span>
+                                            {isOwner && (
+                                                <RemoveButton onClick={() => handleRemoveCollaborator(c._id)} title="Remove collaborator">
+                                                    <RemoveIcon />
+                                                </RemoveButton>
+                                            )}
+                                        </Item>
+                                    ))}
+                                </ItemList>
+                            </CardSection>
+                            
+                            {isOwner && (
+                                <Form onSubmit={handleAddCollaborator}>
+                                    <SectionTitle>Add Collaborator</SectionTitle>
+                                    <Input value={collaboratorEmail} onChange={e => setCollaboratorEmail(e.target.value)} placeholder="User's email address" type="email" required />
+                                    <PrimaryButton type="submit" disabled={isSubmitting}>
+                                        {isSubmitting ? 'Adding...' : 'Add Collaborator'}
+                                    </PrimaryButton>
+                                </Form>
+                            )}
+                        </CardBody>
+                    </ContentCard>
+                </GridContainer>
+            </PageWrapper>
+
+            <Modal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} title="Confirm Action">
+                <ConfirmModalContent>
+                    <ConfirmMessage>{confirmMessage}</ConfirmMessage>
+                    <ButtonGroup>
+                        <CancelButton onClick={() => setIsConfirmModalOpen(false)}>Cancel</CancelButton>
+                        <ConfirmButton onClick={executeConfirmAction}>Confirm</ConfirmButton>
+                    </ButtonGroup>
+                </ConfirmModalContent>
+            </Modal>
+        </>
     );
 };
-
 export default GroupDetailsPage;
