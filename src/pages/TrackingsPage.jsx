@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/api.js';
+import toast from 'react-hot-toast';
+import { formatDistanceToNow } from 'date-fns';
+import Modal from '../components/common/Modal';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 
 // A simple custom hook for debouncing search input
@@ -42,20 +45,17 @@ const PageWrapper = styled.div`
   padding: 1rem;
   animation: ${fadeIn} 0.5s ease-out;
 `;
-
 const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
 `;
-
 const PageTitle = styled.h1`
   font-family: 'Playfair Display', serif;
   font-size: 2.5rem;
   font-weight: 700;
 `;
-
 const SyncButton = styled.button`
   display: inline-flex;
   align-items: center;
@@ -72,7 +72,6 @@ const SyncButton = styled.button`
   &:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
   &:disabled { background-color: #888; cursor: not-allowed; }
 `;
-
 const ContentCard = styled.div`
   background-color: #FDFCF9;
   border: 1px solid #E0DBCF;
@@ -80,7 +79,6 @@ const ContentCard = styled.div`
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
   overflow: hidden;
 `;
-
 const StateWrapper = styled.div`
   display: flex;
   flex-direction: column;
@@ -90,7 +88,6 @@ const StateWrapper = styled.div`
   text-align: center;
   color: #555;
 `;
-
 const Spinner = styled.div`
   width: 40px; height: 40px;
   border: 4px solid rgba(44, 44, 44, 0.1);
@@ -99,12 +96,10 @@ const Spinner = styled.div`
   animation: ${spin} 1s linear infinite;
   margin-bottom: 15px;
 `;
-
 const EmptyStateText = styled.h3`
   font-size: 1.25rem; font-weight: 500; color: #2C2C2C;
   margin-top: 20px; margin-bottom: 8px;
 `;
-
 const statusColors = {
     sent: { bg: '#EBF4FF', text: '#3B82F6', border: '#BEE3F8' },
     responded: { bg: '#D1FAE5', text: '#059669', border: '#A7F3D0' },
@@ -114,7 +109,6 @@ const statusColors = {
     'revived': { bg: '#E0E7FF', text: '#4F46E5', border: '#C7D2FE' },
     'not-interested': { bg: '#F3F4F6', text: '#4B5563', border: '#E5E7EB' },
 };
-
 const StatusBadge = styled.span`
   display: inline-block;
   padding: 4px 12px;
@@ -128,7 +122,6 @@ const StatusBadge = styled.span`
   color: ${props => (statusColors[props.status] || statusColors['not-interested']).text};
   border-color: ${props => (statusColors[props.status] || statusColors['not-interested']).border};
 `;
-
 const MarkStatusButton = styled.button`
   display: flex; align-items: center; justify-content: center;
   width: 28px; height: 28px;
@@ -141,7 +134,6 @@ const MarkStatusButton = styled.button`
     svg { stroke: #DC2626; }
   }
 `;
-
 const SearchInput = styled.input`
   width: 100%;
   padding: 12px 16px;
@@ -157,62 +149,31 @@ const SearchInput = styled.input`
     box-shadow: 0 0 0 3px rgba(44, 44, 44, 0.1);
   }
 `;
+const TableWrapper = styled.div` overflow-x: auto; `;
+const Table = styled.table` width: 100%; border-collapse: collapse; text-align: left; `;
+const Th = styled.th` padding: 16px 24px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: #555; border-bottom: 1px solid #E0DBCF; `;
+const Td = styled.td` padding: 16px 24px; border-bottom: 1px solid #E0DBCF; vertical-align: middle; `;
+const Tr = styled.tr` &:last-child ${Td} { border-bottom: none; } `;
+const NameInput = styled.input` border: 1px solid #ccc; padding: 6px 8px; border-radius: 6px; font-family: 'Poppins', sans-serif; font-size: 0.9rem; width: 150px; `;
+const NameButton = styled.button` background: none; border: none; color: #3B82F6; cursor: pointer; font-weight: 500; font-size: 0.9rem; padding: 0; &:hover { text-decoration: underline; } `;
 
-const TableWrapper = styled.div`
-  overflow-x: auto;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-`;
-
-const Th = styled.th`
-  padding: 16px 24px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: #555;
-  border-bottom: 1px solid #E0DBCF;
-`;
-
-const Td = styled.td`
-  padding: 16px 24px;
-  border-bottom: 1px solid #E0DBCF;
-  vertical-align: middle;
-`;
-
-const Tr = styled.tr`
-  &:last-child ${Td} {
-    border-bottom: none;
-  }
-`;
-
-const NameInput = styled.input`
-  border: 1px solid #ccc;
-  padding: 6px 8px;
-  border-radius: 6px;
-  font-family: 'Poppins', sans-serif;
-  font-size: 0.9rem;
-  width: 150px;
-`;
-
-const NameButton = styled.button`
-  background: none;
-  border: none;
-  color: #3B82F6;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 0.9rem;
-  padding: 0;
-  &:hover { text-decoration: underline; }
+// --- Confirmation Modal Styled Components ---
+const ConfirmModalContent = styled.div` text-align: center; padding: 20px; `;
+const ConfirmMessage = styled.p` font-size: 1.1rem; color: #333; margin-bottom: 30px; `;
+const ButtonGroup = styled.div` display: flex; gap: 15px; justify-content: center; `;
+const CancelButton = styled.button` padding: 12px 24px; background-color: transparent; color: #555; border: 1px solid #C4C4C4; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; &:hover { background-color: #eee; } `;
+const ConfirmButton = styled(CancelButton)`
+  background-color: #D8000C;
+  color: #FFF;
+  border-color: #D8000C;
+  &:hover { background-color: #b2000a; }
 `;
 
 // --- SVG Icons ---
 const SyncIcon = () => ( <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L20.5 10M3.5 14a9 9 0 0 0 14.85 3.36L20.5 14"/></svg> );
 const EmptyIcon = () => ( <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#C4C4C4" strokeWidth="1.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg> );
 const CloseIcon = () => ( <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/></svg> );
+const TrashIcon = () => ( <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> );
 
 
 const TrackingsPage = () => {
@@ -223,6 +184,9 @@ const TrackingsPage = () => {
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [editingId, setEditingId] = useState(null);
     const [editingName, setEditingName] = useState('');
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [confirmAction, setConfirmAction] = useState(null);
+    const [confirmMessage, setConfirmMessage] = useState('');
 
     useEffect(() => {
         const fetchTrackings = async () => {
@@ -241,13 +205,15 @@ const TrackingsPage = () => {
 
     const handleSync = async () => {
         setIsSyncing(true);
+        const toastId = toast.loading('Syncing statuses...');
         try {
             await api.post('/sync-status');
             const res = await api.get(`/trackings?search=${debouncedSearchTerm}`);
             setTrackings(res.data);
+            toast.success('Sync complete!', { id: toastId });
         } catch (err) {
             console.error('Sync failed:', err);
-            alert('Failed to sync email statuses.');
+            toast.error('Failed to sync statuses.', { id: toastId });
         } finally {
             setIsSyncing(false);
         }
@@ -256,14 +222,11 @@ const TrackingsPage = () => {
     const handleSetStatus = async (trackingId, newStatus) => {
         try {
             const res = await api.patch(`/tracking/${trackingId}/status`, { status: newStatus });
-            setTrackings(prevTrackings =>
-                prevTrackings.map(t =>
-                    t._id === trackingId ? res.data : t
-                )
-            );
+            setTrackings(prevTrackings => prevTrackings.map(t => t._id === trackingId ? res.data : t));
+            toast.success('Status updated!');
         } catch (error) {
             console.error('Failed to update status:', error);
-            alert('Failed to update status.');
+            toast.error('Failed to update status.');
         }
     };
     
@@ -272,8 +235,9 @@ const TrackingsPage = () => {
             const res = await api.patch(`/tracking/${trackingId}/name`, { name: editingName });
             setTrackings(prev => prev.map(t => t._id === trackingId ? res.data : t));
             setEditingId(null);
+            toast.success('Name updated!');
         } catch (error) {
-            alert("Failed to update name.");
+            toast.error("Failed to update name.");
             setEditingId(null);
         }
     };
@@ -281,6 +245,28 @@ const TrackingsPage = () => {
     const startEditing = (tracking) => {
         setEditingId(tracking._id);
         setEditingName(tracking.name || '');
+    };
+    
+    const handleDeleteTracking = (trackingId) => {
+        setConfirmMessage("Are you sure you want to permanently delete this tracking record?");
+        setConfirmAction(() => async () => {
+            try {
+                await api.delete(`/tracking/${trackingId}`);
+                setTrackings(prev => prev.filter(t => t._id !== trackingId));
+                toast.success('Tracking record deleted.');
+            } catch (error) {
+                toast.error('Failed to delete record.');
+                console.error("Delete error:", error);
+            }
+        });
+        setIsConfirmModalOpen(true);
+    };
+
+    const executeConfirmAction = () => {
+        if (confirmAction) {
+            confirmAction();
+        }
+        setIsConfirmModalOpen(false);
     };
 
     const formatStatusText = (status) => {
@@ -320,6 +306,7 @@ const TrackingsPage = () => {
                                         <Th>Recipient</Th>
                                         <Th>Subject</Th>
                                         <Th>Status</Th>
+                                        <Th>Tracked</Th>
                                         <Th>Actions</Th>
                                     </tr>
                                 </thead>
@@ -350,11 +337,19 @@ const TrackingsPage = () => {
                                                 </StatusBadge>
                                             </Td>
                                             <Td>
-                                                {['sent', 'ghosted', 'follow-up', 'Engaged', 'responded', 'revived'].includes(tracking.status) && (
-                                                    <MarkStatusButton onClick={() => handleSetStatus(tracking._id, 'not-interested')} title="Mark as Not Interested">
-                                                        <CloseIcon />
+                                                {formatDistanceToNow(new Date(tracking.createdAt), { addSuffix: true })}
+                                            </Td>
+                                            <Td>
+                                                <div style={{ display: 'flex', gap: '10px' }}>
+                                                    {['sent', 'ghosted', 'follow-up', 'Engaged', 'responded', 'revived'].includes(tracking.status) && (
+                                                        <MarkStatusButton onClick={() => handleSetStatus(tracking._id, 'not-interested')} title="Mark as Not Interested">
+                                                            <CloseIcon />
+                                                        </MarkStatusButton>
+                                                    )}
+                                                    <MarkStatusButton onClick={() => handleDeleteTracking(tracking._id)} title="Delete Tracking Record">
+                                                        <TrashIcon />
                                                     </MarkStatusButton>
-                                                )}
+                                                </div>
                                             </Td>
                                         </Tr>
                                     ))}
@@ -370,6 +365,16 @@ const TrackingsPage = () => {
                     )}
                 </ContentCard>
             </PageWrapper>
+
+            <Modal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} title="Confirm Action">
+                <ConfirmModalContent>
+                    <ConfirmMessage>{confirmMessage}</ConfirmMessage>
+                    <ButtonGroup>
+                        <CancelButton onClick={() => setIsConfirmModalOpen(false)}>Cancel</CancelButton>
+                        <ConfirmButton onClick={executeConfirmAction}>Confirm</ConfirmButton>
+                    </ButtonGroup>
+                </ConfirmModalContent>
+            </Modal>
         </>
     );
 };

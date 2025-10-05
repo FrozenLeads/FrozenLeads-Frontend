@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api/api';
+import toast from 'react-hot-toast';
 import Modal from '../components/common/Modal';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 
@@ -54,6 +55,7 @@ const PrimaryButton = styled.button` padding: 12px; background-color: #2C2C2C; c
 const SearchWrapper = styled.div` position: relative; `;
 const SearchResultsList = styled.ul` position: absolute; top: 100%; left: 0; right: 0; background-color: #FFFFFF; border: 1px solid #E0DBCF; border-top: none; border-radius: 0 0 12px 12px; box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05); list-style: none; margin-top: -2px; max-height: 200px; overflow-y: auto; z-index: 10; `;
 const SearchResultItem = styled.li` padding: 12px 15px; cursor: pointer; font-size: 0.95rem; transition: background-color 0.2s ease; &:hover { background-color: #F4F1EC; } `;
+const SubtleText = styled.span` font-size: 0.8rem; color: #888; margin-left: 8px; `;
 
 // --- Confirmation Modal Styled Components ---
 const ConfirmModalContent = styled.div` text-align: center; padding: 20px; `;
@@ -75,6 +77,7 @@ const ConfirmButton = styled(DestructiveButton)`
 const BackIcon = () => ( <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> );
 const RemoveIcon = () => ( <svg viewBox="0 0 24 24" fill="none" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg> );
 
+
 const GroupDetailsPage = () => {
     const { groupId } = useParams();
     const navigate = useNavigate();
@@ -86,13 +89,11 @@ const GroupDetailsPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const searchRef = useRef(null);
-    const [collaboratorEmail, setCollaboratorEmail] = useState('');
+    const [collaboratorIdentifier, setCollaboratorIdentifier] = useState('');
     const [leadToShare, setLeadToShare] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearchVisible, setIsSearchVisible] = useState(false);
-
-    // Confirmation Modal State
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [confirmMessage, setConfirmMessage] = useState('');
@@ -107,15 +108,12 @@ const GroupDetailsPage = () => {
                 api.get(`/collab/${groupId}/leads`),
                 api.get('/lead/data/all')
             ]);
-
             setCurrentUser(meRes.data);
             setGroup(groupRes.data.data);
             setSharedLeads(sharedLeadsRes.data.data);
-
             const sharedLeadIds = new Set(sharedLeadsRes.data.data.map(sl => sl.lead._id));
             const available = allLeadsRes.data.data.filter(lead => !sharedLeadIds.has(lead._id));
             setAvailableLeads(available);
-
         } catch (error) {
             console.error("Failed to fetch group details", error);
             setError(error.response?.data?.message || 'Could not load group details.');
@@ -124,15 +122,11 @@ const GroupDetailsPage = () => {
         }
     }, [groupId]);
     
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
+    useEffect(() => { fetchData(); }, [fetchData]);
+    
     useEffect(() => {
         if (searchQuery.length > 0) {
-            const filtered = availableLeads.filter(lead =>
-                lead.leadName.toLowerCase().includes(searchQuery.toLowerCase())
-            );
+            const filtered = availableLeads.filter(lead => lead.leadName.toLowerCase().includes(searchQuery.toLowerCase()));
             setSearchResults(filtered);
         } else {
             setSearchResults([]);
@@ -153,11 +147,12 @@ const GroupDetailsPage = () => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            await api.post(`/collab/${groupId}/add-collaborator`, { email: collaboratorEmail });
-            setCollaboratorEmail('');
+            await api.post(`/collab/${groupId}/add-collaborator`, { identifier: collaboratorIdentifier });
+            setCollaboratorIdentifier('');
+            toast.success('Collaborator added!');
             fetchData();
         } catch (error) {
-            alert('Failed to add collaborator: ' + (error.response?.data?.message || error.message));
+            toast.error(error.response?.data?.message || 'Failed to add collaborator.');
         } finally {
             setIsSubmitting(false);
         }
@@ -168,9 +163,10 @@ const GroupDetailsPage = () => {
         setConfirmAction(() => async () => {
             try {
                 await api.delete(`/collab/${groupId}/leads/${sharedLeadId}`);
+                toast.success('Lead unshared successfully!');
                 fetchData();
             } catch (error) {
-                alert('Failed to unshare lead: ' + (error.response?.data?.message || error.message));
+                toast.error(error.response?.data?.message || 'Failed to unshare lead.');
             }
         });
         setIsConfirmModalOpen(true);
@@ -181,9 +177,10 @@ const GroupDetailsPage = () => {
         setConfirmAction(() => async () => {
             try {
                 await api.post(`/collab/${groupId}/remove-collaborator`, { collaboratorId });
+                toast.success('Collaborator removed.');
                 fetchData();
             } catch (error) {
-                alert('Failed to remove collaborator: ' + (error.response?.data?.message || error.message));
+                toast.error(error.response?.data?.message || 'Failed to remove collaborator.');
             }
         });
         setIsConfirmModalOpen(true);
@@ -194,9 +191,10 @@ const GroupDetailsPage = () => {
         setConfirmAction(() => async () => {
             try {
                 await api.delete(`/collab/${groupId}`);
+                toast.success('Group deleted.');
                 navigate('/groups');
             } catch (error) {
-                alert('Failed to delete group: ' + (error.response?.data?.message || error.message));
+                toast.error(error.response?.data?.message || 'Failed to delete group.');
             }
         });
         setIsConfirmModalOpen(true);
@@ -209,9 +207,10 @@ const GroupDetailsPage = () => {
             await api.post(`/collab/${groupId}/share-lead/${leadToShare}`);
             setLeadToShare('');
             setSearchQuery('');
+            toast.success('Lead shared!');
             fetchData();
         } catch (error) {
-            alert('Failed to share lead: ' + (error.response?.data?.error || error.message));
+            toast.error(error.response?.data?.error || 'Failed to share lead.');
         } finally {
             setIsSubmitting(false);
         }
@@ -246,9 +245,7 @@ const GroupDetailsPage = () => {
                         <PageTitle>{group.groupName}</PageTitle>
                         <PageSubtitle>Owned by {group.owner.firstName}</PageSubtitle>
                     </div>
-                    {isOwner && (
-                        <DestructiveButton onClick={handleDeleteGroup}>Delete Group</DestructiveButton>
-                    )}
+                    {isOwner && (<DestructiveButton onClick={handleDeleteGroup}>Delete Group</DestructiveButton>)}
                 </Header>
                 
                 <GridContainer>
@@ -264,20 +261,15 @@ const GroupDetailsPage = () => {
                                                 <Item key={sl._id}>
                                                     <div>
                                                         <span>{sl.lead.leadName}</span>
-                                                        <span style={{ fontSize: '0.8rem', color: '#888' }}> (by {sl.sharedBy.firstName})</span>
+                                                        <SubtleText>(by {sl.sharedBy.firstName})</SubtleText>
                                                     </div>
-                                                    {canUnshare && (
-                                                        <RemoveButton onClick={() => handleUnshareLead(sl._id)} title="Unshare this lead">
-                                                            <RemoveIcon />
-                                                        </RemoveButton>
-                                                    )}
+                                                    {canUnshare && (<RemoveButton onClick={() => handleUnshareLead(sl._id)} title="Unshare this lead"><RemoveIcon /></RemoveButton>)}
                                                 </Item>
                                             );
                                         })}
                                     </ItemList>
                                 ) : <p style={{color: '#555', fontSize: '0.9rem'}}>No leads have been shared yet.</p>}
                             </CardSection>
-                            
                             <Form onSubmit={handleShareLead}>
                                 <SectionTitle>Share a Lead</SectionTitle>
                                 <SearchWrapper ref={searchRef}>
@@ -320,15 +312,17 @@ const GroupDetailsPage = () => {
                         <CardBody>
                             <CardSection>
                                 <ItemList>
-                                    <Item><strong>{group.owner.firstName}</strong> <span style={{fontSize: '0.8rem', color: '#888'}}> (Owner)</span></Item>
+                                    <Item>
+                                        <span>{group.owner.firstName}</span>
+                                        <SubtleText>({group.owner.username}-{group.owner.discriminator}) (Owner)</SubtleText>
+                                    </Item>
                                     {group.collaborators.map(c => (
                                         <Item key={c._id}>
-                                            <span>{c.firstName}</span>
-                                            {isOwner && (
-                                                <RemoveButton onClick={() => handleRemoveCollaborator(c._id)} title="Remove collaborator">
-                                                    <RemoveIcon />
-                                                </RemoveButton>
-                                            )}
+                                            <div>
+                                                <span>{c.firstName}</span>
+                                                <SubtleText>({c.username}-{c.discriminator})</SubtleText>
+                                            </div>
+                                            {isOwner && (<RemoveButton onClick={() => handleRemoveCollaborator(c._id)} title="Remove collaborator"><RemoveIcon /></RemoveButton>)}
                                         </Item>
                                     ))}
                                 </ItemList>
@@ -337,7 +331,13 @@ const GroupDetailsPage = () => {
                             {isOwner && (
                                 <Form onSubmit={handleAddCollaborator}>
                                     <SectionTitle>Add Collaborator</SectionTitle>
-                                    <Input value={collaboratorEmail} onChange={e => setCollaboratorEmail(e.target.value)} placeholder="User's email address" type="email" required />
+                                    <Input 
+                                        value={collaboratorIdentifier} 
+                                        onChange={e => setCollaboratorIdentifier(e.target.value)} 
+                                        placeholder="User's handle (e.g., jane-1234) or email" 
+                                        type="text" 
+                                        required 
+                                    />
                                     <PrimaryButton type="submit" disabled={isSubmitting}>
                                         {isSubmitting ? 'Adding...' : 'Add Collaborator'}
                                     </PrimaryButton>

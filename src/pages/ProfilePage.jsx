@@ -39,6 +39,16 @@ const ProfileName = styled.h1`
   font-size: 2.5rem;
   margin-bottom: 5px;
 `;
+
+// --- NEW: Styled component for the user's handle ---
+const ProfileHandle = styled.p`
+  color: #888;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 10px;
+  margin-top: -5px;
+`;
+
 const ProfileEmail = styled.p`
   color: #555;
   margin-bottom: 15px;
@@ -126,6 +136,12 @@ const ProfilePage = () => {
                     <ProfileAvatar src={user.photoUrl} alt="Profile" />
                     <ProfileInfo>
                         <ProfileName>{user.firstName} {user.lastName}</ProfileName>
+                        
+                        {/* --- NEW: Display the user's handle --- */}
+                        {user.username && user.discriminator && (
+                            <ProfileHandle>{user.username}-{user.discriminator}</ProfileHandle>
+                        )}
+                        
                         <ProfileEmail>{user.emailId}</ProfileEmail>
                         <PrimaryButton>Edit Profile</PrimaryButton>
                     </ProfileInfo>
