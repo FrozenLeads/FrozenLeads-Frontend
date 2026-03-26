@@ -56,6 +56,25 @@ const SearchWrapper = styled.div` position: relative; `;
 const SearchResultsList = styled.ul` position: absolute; top: 100%; left: 0; right: 0; background-color: #FFFFFF; border: 1px solid #E0DBCF; border-top: none; border-radius: 0 0 12px 12px; box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05); list-style: none; margin-top: -2px; max-height: 200px; overflow-y: auto; z-index: 10; `;
 const SearchResultItem = styled.li` padding: 12px 15px; cursor: pointer; font-size: 0.95rem; transition: background-color 0.2s ease; &:hover { background-color: #F4F1EC; } `;
 const SubtleText = styled.span` font-size: 0.8rem; color: #888; margin-left: 8px; `;
+const CopyButton = styled.button`
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; background: none; border: none;
+  border-radius: 50%; cursor: pointer; transition: background-color 0.2s ease;
+  flex-shrink: 0;
+  svg { width: 16px; height: 16px; stroke: #888; }
+  &:hover { background-color: rgba(44, 44, 44, 0.08); }
+`;
+const LeadInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+`;
+const LeadName = styled.span`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
 
 // --- Confirmation Modal Styled Components ---
 const ConfirmModalContent = styled.div` text-align: center; padding: 20px; `;
@@ -76,6 +95,8 @@ const ConfirmButton = styled(DestructiveButton)`
 // --- SVG Icons ---
 const BackIcon = () => ( <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> );
 const RemoveIcon = () => ( <svg viewBox="0 0 24 24" fill="none" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg> );
+const CopyIcon = () => ( <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> );
+const CheckIcon = () => ( <svg viewBox="0 0 24 24" fill="none" stroke="#228B22" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg> );
 
 
 const GroupDetailsPage = () => {
@@ -97,6 +118,7 @@ const GroupDetailsPage = () => {
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [confirmMessage, setConfirmMessage] = useState('');
+    const [copiedIdentifier, setCopiedIdentifier] = useState(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -142,6 +164,13 @@ const GroupDetailsPage = () => {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [searchRef]);
+
+    const handleCopy = (textToCopy, identifier) => {
+        navigator.clipboard.writeText(textToCopy);
+        setCopiedIdentifier(identifier);
+        toast.success('Email copied!');
+        setTimeout(() => setCopiedIdentifier(null), 2000);
+    };
 
     const handleAddCollaborator = async (e) => {
         e.preventDefault();
@@ -259,10 +288,13 @@ const GroupDetailsPage = () => {
                                             const canUnshare = isOwner || (currentUser && currentUser._id === sl.sharedBy._id);
                                             return (
                                                 <Item key={sl._id}>
-                                                    <div>
-                                                        <span>{sl.lead.leadName}</span>
+                                                    <LeadInfo>
+                                                        <LeadName>{sl.lead.leadName}</LeadName>
+                                                        <CopyButton onClick={() => handleCopy(sl.lead.LeadEmailId, sl.lead._id)} title="Copy email">
+                                                            {copiedIdentifier === sl.lead._id ? <CheckIcon /> : <CopyIcon />}
+                                                        </CopyButton>
                                                         <SubtleText>(by {sl.sharedBy.firstName})</SubtleText>
-                                                    </div>
+                                                    </LeadInfo>
                                                     {canUnshare && (<RemoveButton onClick={() => handleUnshareLead(sl._id)} title="Unshare this lead"><RemoveIcon /></RemoveButton>)}
                                                 </Item>
                                             );
@@ -313,8 +345,10 @@ const GroupDetailsPage = () => {
                             <CardSection>
                                 <ItemList>
                                     <Item>
-                                        <span>{group.owner.firstName}</span>
-                                        <SubtleText>({group.owner.username}-{group.owner.discriminator}) (Owner)</SubtleText>
+                                        <div>
+                                            <span>{group.owner.firstName}</span>
+                                            <SubtleText>({group.owner.username}-{group.owner.discriminator}) (Owner)</SubtleText>
+                                        </div>
                                     </Item>
                                     {group.collaborators.map(c => (
                                         <Item key={c._id}>
